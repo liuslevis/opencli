@@ -14,6 +14,9 @@ export default defineConfig({
           name: 'e2e',
           include: ['tests/**/*.test.ts'],
           maxWorkers: 2,
+          sequence: {
+            groupOrder: 1,
+          },
         },
       },
     ],
