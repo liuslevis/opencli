@@ -4,91 +4,59 @@ const DAEMON_WS_URL = `ws://${DAEMON_HOST}:${DAEMON_PORT}/ext`;
 const WS_RECONNECT_BASE_DELAY = 2e3;
 const WS_RECONNECT_MAX_DELAY = 6e4;
 
-const attached = /* @__PURE__ */ new Set();
-async function ensureAttached(tabId) {
-  if (attached.has(tabId)) return;
-  try {
-    await chrome.debugger.attach({ tabId }, "1.3");
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (msg.includes("Another debugger is already attached")) {
-      try {
-        await chrome.debugger.detach({ tabId });
-      } catch {
-      }
-      try {
-        await chrome.debugger.attach({ tabId }, "1.3");
-      } catch {
-        throw new Error(`attach failed: ${msg}`);
-      }
-    } else {
-      throw new Error(`attach failed: ${msg}`);
-    }
-  }
-  attached.add(tabId);
-  try {
-    await chrome.debugger.sendCommand({ tabId }, "Runtime.enable");
-  } catch {
-  }
-}
 async function evaluate(tabId, expression) {
-  await ensureAttached(tabId);
-  const result = await chrome.debugger.sendCommand({ tabId }, "Runtime.evaluate", {
-    expression,
-    returnByValue: true,
-    awaitPromise: true
-  });
-  if (result.exceptionDetails) {
-    const errMsg = result.exceptionDetails.exception?.description || result.exceptionDetails.text || "Eval error";
-    throw new Error(errMsg);
+  const wrappedCode = `
+    (async () => {
+      try {
+        const __result = await (async () => { return (${expression}); })();
+        return { __ok: true, __value: __result };
+      } catch (e) {
+        return { __ok: false, __error: e instanceof Error ? e.message : String(e), __stack: e instanceof Error ? e.stack : undefined };
+      }
+    })()
+  `;
+  let results;
+  try {
+    results = await chrome.scripting.executeScript({
+      target: { tabId },
+      world: "MAIN",
+      func: (code) => {
+        return eval(code);
+      },
+      args: [wrappedCode]
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`executeScript failed: ${msg}`);
   }
-  return result.result?.value;
+  if (!results || results.length === 0) {
+    throw new Error("executeScript returned no results");
+  }
+  const result = results[0].result;
+  if (!result) {
+    return void 0;
+  }
+  if (!result.__ok) {
+    throw new Error(result.__error || "Eval error");
+  }
+  return result.__value;
 }
 const evaluateAsync = evaluate;
-async function screenshot(tabId, options = {}) {
-  await ensureAttached(tabId);
+async function screenshot(tabId2, options = {}) {
+  const tab = await chrome.tabs.get(tabId2);
+  if (!tab.active) {
+    await chrome.tabs.update(tabId2, { active: true });
+    await new Promise((r) => setTimeout(r, 100));
+  }
   const format = options.format ?? "png";
-  if (options.fullPage) {
-    const metrics = await chrome.debugger.sendCommand({ tabId }, "Page.getLayoutMetrics");
-    const size = metrics.cssContentSize || metrics.contentSize;
-    if (size) {
-      await chrome.debugger.sendCommand({ tabId }, "Emulation.setDeviceMetricsOverride", {
-        mobile: false,
-        width: Math.ceil(size.width),
-        height: Math.ceil(size.height),
-        deviceScaleFactor: 1
-      });
-    }
-  }
-  try {
-    const params = { format };
-    if (format === "jpeg" && options.quality !== void 0) {
-      params.quality = Math.max(0, Math.min(100, options.quality));
-    }
-    const result = await chrome.debugger.sendCommand({ tabId }, "Page.captureScreenshot", params);
-    return result.data;
-  } finally {
-    if (options.fullPage) {
-      await chrome.debugger.sendCommand({ tabId }, "Emulation.clearDeviceMetricsOverride").catch(() => {
-      });
-    }
-  }
-}
-function detach(tabId) {
-  if (!attached.has(tabId)) return;
-  attached.delete(tabId);
-  try {
-    chrome.debugger.detach({ tabId });
-  } catch {
-  }
-}
-function registerListeners() {
-  chrome.tabs.onRemoved.addListener((tabId) => {
-    attached.delete(tabId);
+  const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
+    format,
+    quality: format === "jpeg" ? options.quality ?? 80 : void 0
   });
-  chrome.debugger.onDetach.addListener((source) => {
-    if (source.tabId) attached.delete(source.tabId);
-  });
+  const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, "");
+  return base64;
+}
+function detach(_tabId) {
 }
 
 let ws = null;
@@ -165,7 +133,6 @@ function initialize() {
   if (initialized) return;
   initialized = true;
   chrome.alarms.create("keepalive", { periodInMinutes: 0.4 });
-  registerListeners();
   connect();
   console.log("[opencli] Browser Bridge extension initialized");
 }
@@ -286,7 +253,6 @@ async function handleTabs(cmd) {
       }
       const tabId = await resolveTabId(cmd.tabId);
       await chrome.tabs.remove(tabId);
-      detach(tabId);
       return { id: cmd.id, ok: true, data: { closed: tabId } };
     }
     case "select": {
