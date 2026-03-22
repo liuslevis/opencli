@@ -18,6 +18,14 @@ import { log } from './logger.js';
 /** Plugins directory: ~/.opencli/plugins/ */
 export const PLUGINS_DIR = path.join(os.homedir(), '.opencli', 'plugins');
 
+function isRuntimeJsModule(file: string): boolean {
+  return file.endsWith('.js') && !file.endsWith('.d.js') && !file.endsWith('.test.js');
+}
+
+function isRuntimeTsModule(file: string): boolean {
+  return file.endsWith('.ts') && !file.endsWith('.d.ts') && !file.endsWith('.test.ts');
+}
+
 /**
  * Discover and register CLI commands.
  * Uses pre-compiled manifest when available for instant startup.
@@ -108,10 +116,7 @@ async function discoverClisFromFs(dir: string): Promise<void> {
       const filePath = path.join(siteDir, file);
       if (file.endsWith('.yaml') || file.endsWith('.yml')) {
         promises.push(registerYamlCli(filePath, site));
-      } else if (
-        (file.endsWith('.js') && !file.endsWith('.d.js')) ||
-        (file.endsWith('.ts') && !file.endsWith('.d.ts') && !file.endsWith('.test.ts'))
-      ) {
+      } else if (isRuntimeJsModule(file) || isRuntimeTsModule(file)) {
         promises.push(
           import(`file://${filePath}`).catch((err: any) => {
             log.warn(`Failed to load module ${filePath}: ${err.message}`);
@@ -196,15 +201,13 @@ async function discoverPluginDir(dir: string, site: string): Promise<void> {
     const filePath = path.join(dir, file);
     if (file.endsWith('.yaml') || file.endsWith('.yml')) {
       promises.push(registerYamlCli(filePath, site));
-    } else if (file.endsWith('.js') && !file.endsWith('.d.js')) {
+    } else if (isRuntimeJsModule(file)) {
       promises.push(
         import(`file://${filePath}`).catch((err: any) => {
           log.warn(`Plugin ${site}/${file}: ${err.message}`);
         })
       );
-    } else if (
-      file.endsWith('.ts') && !file.endsWith('.d.ts') && !file.endsWith('.test.ts')
-    ) {
+    } else if (isRuntimeTsModule(file)) {
       // Skip .ts if a compiled .js sibling exists (production mode can't load .ts)
       const jsFile = file.replace(/\.ts$/, '.js');
       if (fileSet.has(jsFile)) continue;

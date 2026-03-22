@@ -131,6 +131,22 @@ opencli hackernews top --limit 10        # Top stories
 # BBC (public)
 opencli bbc news --limit 10             # BBC News RSS headlines
 
+# Bing (public)
+opencli bing search "OpenAI" --limit 10 # Search web results (query positional)
+opencli bing news "OpenAI" --limit 10   # Search Bing News headlines
+
+# Google (public)
+opencli google search "OpenAI" --limit 10   # Search Google web results
+opencli google news "OpenAI" --limit 10     # Search Google News headlines
+opencli google suggest "OpenAI" --limit 10  # Google autocomplete suggestions
+
+# DuckDuckGo (public)
+opencli duckduckgo suggest "OpenAI" --limit 10  # DuckDuckGo autocomplete suggestions
+
+# Baidu (public)
+opencli baidu search "OpenAI" --limit 10    # Search Baidu web results
+opencli baidu suggest "OpenAI" --limit 10   # Baidu search suggestions
+
 # 微博 (browser)
 opencli weibo hot --limit 10            # 微博热搜
 

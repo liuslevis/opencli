@@ -3,12 +3,49 @@ import { discoverClis, discoverPlugins, PLUGINS_DIR } from './discovery.js';
 import { executeCommand } from './execution.js';
 import { getRegistry, cli, Strategy } from './registry.js';
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 
 describe('discoverClis', () => {
   it('handles non-existent directories gracefully', async () => {
     // Should not throw for missing directories
     await expect(discoverClis('/tmp/nonexistent-opencli-test-dir')).resolves.not.toThrow();
+  });
+
+  it('ignores compiled test modules during filesystem discovery', async () => {
+    const rootDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'opencli-discover-'));
+    const site = '__test-discover-ignore__';
+    const siteDir = path.join(rootDir, site);
+
+    try {
+      await fs.promises.mkdir(siteDir, { recursive: true });
+      await fs.promises.writeFile(path.join(siteDir, 'visible.yaml'), `
+site: ${site}
+name: visible
+description: visible command
+strategy: public
+browser: false
+
+pipeline:
+  - evaluate: "() => [{ ok: true }]"
+
+columns: [ok]
+`);
+      await fs.promises.writeFile(path.join(siteDir, 'ignored.test.js'), `
+globalThis.__opencliIgnoredTestImported = true;
+throw new Error('ignored test module should not be imported');
+`);
+
+      delete (globalThis as any).__opencliIgnoredTestImported;
+      await discoverClis(rootDir);
+
+      expect(getRegistry().has(`${site}/visible`)).toBe(true);
+      expect((globalThis as any).__opencliIgnoredTestImported).toBeUndefined();
+    } finally {
+      getRegistry().delete(`${site}/visible`);
+      delete (globalThis as any).__opencliIgnoredTestImported;
+      await fs.promises.rm(rootDir, { recursive: true, force: true });
+    }
   });
 });
 

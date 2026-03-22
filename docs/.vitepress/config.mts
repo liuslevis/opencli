@@ -76,7 +76,11 @@ export default defineConfig({
               items: [
                 { text: 'HackerNews', link: '/adapters/browser/hackernews' },
                 { text: 'BBC', link: '/adapters/browser/bbc' },
+                { text: 'Baidu', link: '/adapters/browser/baidu' },
+                { text: 'Bing', link: '/adapters/browser/bing' },
                 { text: 'Apple Podcasts', link: '/adapters/browser/apple-podcasts' },
+                { text: 'DuckDuckGo', link: '/adapters/browser/duckduckgo' },
+                { text: 'Google', link: '/adapters/browser/google' },
                 { text: 'Xiaoyuzhou', link: '/adapters/browser/xiaoyuzhou' },
                 { text: 'Yahoo Finance', link: '/adapters/browser/yahoo-finance' },
                 { text: 'arXiv', link: '/adapters/browser/arxiv' },

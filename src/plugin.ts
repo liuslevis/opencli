@@ -126,7 +126,7 @@ function scanPluginCommands(dir: string): string[] {
         .filter(f =>
           f.endsWith('.yaml') || f.endsWith('.yml') ||
           (f.endsWith('.ts') && !f.endsWith('.d.ts') && !f.endsWith('.test.ts')) ||
-          (f.endsWith('.js') && !f.endsWith('.d.js'))
+          (f.endsWith('.js') && !f.endsWith('.d.js') && !f.endsWith('.test.js'))
         )
         .map(f => path.basename(f, path.extname(f)))
     );

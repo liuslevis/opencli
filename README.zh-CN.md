@@ -137,10 +137,14 @@ npm install -g @jackwener/opencli@latest
 | **youtube** | `search` `video` `transcript` | 浏览器 |
 | **boss** | `search` `detail` `recommend` `joblist` `greet` `batchgreet` `send` `chatlist` `chatmsg` `invite` `mark` `exchange` `resume` `stats` | 浏览器 |
 | **coupang** | `search` `add-to-cart` | 浏览器 |
+| **baidu** | `search` `suggest` | 公共 API / 浏览器 |
 | **bbc** | `news` | 公共 API |
+| **bing** | `search` `news` | 公共 API |
 | **bloomberg** | `main` `markets` `economics` `industries` `tech` `politics` `businessweek` `opinions` `feeds` `news` | 公共 API / 浏览器 |
 | **ctrip** | `search` | 浏览器 |
+| **duckduckgo** | `suggest` | 公共 API |
 | **arxiv** | `search` `paper` | 公开 |
+| **google** | `search` `news` `suggest` | 公共 API / 浏览器 |
 | **wikipedia** | `search` `summary` | 公开 |
 | **hackernews** | `top` | 公共 API |
 | **linkedin** | `search` | 浏览器 |

@@ -137,10 +137,14 @@ Run `opencli list` for the live registry.
 | **youtube** | `search` `video` `transcript` | Browser |
 | **boss** | `search` `detail` `recommend` `joblist` `greet` `batchgreet` `send` `chatlist` `chatmsg` `invite` `mark` `exchange` `resume` `stats` | Browser |
 | **coupang** | `search` `add-to-cart` | Browser |
+| **baidu** | `search` `suggest` | Public / Browser |
 | **bbc** | `news` | Public |
+| **bing** | `search` `news` | Public |
 | **bloomberg** | `main` `markets` `economics` `industries` `tech` `politics` `businessweek` `opinions` `feeds` `news` | Public / Browser |
 | **ctrip** | `search` | Browser |
+| **duckduckgo** | `suggest` | Public |
 | **arxiv** | `search` `paper` | Public |
+| **google** | `search` `news` `suggest` | Public / Browser |
 | **wikipedia** | `search` `summary` | Public |
 | **hackernews** | `top` | Public |
 | **linkedin** | `search` | Browser |
