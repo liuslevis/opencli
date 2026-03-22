@@ -95,13 +95,16 @@ describe('google search command', () => {
     const page = {
       goto: vi.fn().mockResolvedValue(undefined),
       wait: vi.fn().mockResolvedValue(undefined),
-      evaluate: vi.fn().mockResolvedValue([
-        {
-          title: "China dials down growth ambitions with decades-low target. Here's why - CNBC",
-          snippet: 'CNBC coverage of the 2026 China GDP goal announcement.',
-          url: 'https://www.cnbc.com/example',
-        },
-      ]),
+      evaluate: vi.fn().mockResolvedValue({
+        results: [
+          {
+            title: "China dials down growth ambitions with decades-low target. Here's why - CNBC",
+            snippet: 'CNBC coverage of the 2026 China GDP goal announcement.',
+            url: 'https://www.cnbc.com/example',
+          },
+        ],
+        hasNext: false,
+      }),
     };
 
     const result = await cmd!.func!(page as any, {
@@ -121,5 +124,194 @@ describe('google search command', () => {
         url: 'https://www.cnbc.com/example',
       },
     ]);
+  });
+
+  it('paginates across multiple result pages to satisfy larger limits', async () => {
+    const cmd = getRegistry().get('google/search');
+    expect(cmd?.func).toBeTypeOf('function');
+
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      wait: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi.fn()
+        .mockResolvedValueOnce({
+          results: Array.from({ length: 10 }, (_v, index) => ({
+            title: `Result ${index + 1}`,
+            snippet: `Snippet ${index + 1}`,
+            url: `https://example.com/${index + 1}`,
+          })),
+          hasNext: true,
+        })
+        .mockResolvedValueOnce({
+          results: Array.from({ length: 10 }, (_v, index) => ({
+            title: `Result ${index + 11}`,
+            snippet: `Snippet ${index + 11}`,
+            url: `https://example.com/${index + 11}`,
+          })),
+          hasNext: true,
+        })
+        .mockResolvedValueOnce({
+          results: Array.from({ length: 5 }, (_v, index) => ({
+            title: `Result ${index + 21}`,
+            snippet: `Snippet ${index + 21}`,
+            url: `https://example.com/${index + 21}`,
+          })),
+          hasNext: false,
+        }),
+    };
+
+    const result = await cmd!.func!(page as any, {
+      query: '2026 China GDP forecast',
+      limit: 25,
+      hl: 'en-US',
+    }) as Array<{ rank: number; title: string; snippet: string; url: string }>;
+
+    expect(page.goto).toHaveBeenNthCalledWith(
+      1,
+      'https://www.google.com/search?q=2026+China+GDP+forecast&hl=en-US&num=10',
+    );
+    expect(page.goto).toHaveBeenNthCalledWith(
+      2,
+      'https://www.google.com/search?q=2026+China+GDP+forecast&hl=en-US&num=10&start=10',
+    );
+    expect(page.goto).toHaveBeenNthCalledWith(
+      3,
+      'https://www.google.com/search?q=2026+China+GDP+forecast&hl=en-US&num=10&start=20',
+    );
+    expect(result).toHaveLength(25);
+    expect(result[0]).toEqual({
+      rank: 1,
+      title: 'Result 1',
+      snippet: 'Snippet 1',
+      url: 'https://example.com/1',
+    });
+    expect(result[24]).toEqual({
+      rank: 25,
+      title: 'Result 25',
+      snippet: 'Snippet 25',
+      url: 'https://example.com/25',
+    });
+  });
+
+  it('keeps paging when duplicates leave room for more unique results', async () => {
+    const cmd = getRegistry().get('google/search');
+    expect(cmd?.func).toBeTypeOf('function');
+
+    const pageResults = [
+      Array.from({ length: 10 }, (_v, index) => ({
+        title: `Result ${index + 1}`,
+        snippet: `Snippet ${index + 1}`,
+        url: `https://example.com/${index + 1}`,
+      })),
+      Array.from({ length: 10 }, (_v, index) => ({
+        title: `Result ${index + 11}`,
+        snippet: `Snippet ${index + 11}`,
+        url: `https://example.com/${index + 11}`,
+      })),
+      Array.from({ length: 10 }, (_v, index) => ({
+        title: `Result ${index + 21}`,
+        snippet: `Snippet ${index + 21}`,
+        url: `https://example.com/${index + 21}`,
+      })),
+      Array.from({ length: 10 }, (_v, index) => ({
+        title: `Result ${index + 31}`,
+        snippet: `Snippet ${index + 31}`,
+        url: `https://example.com/${index + 31}`,
+      })),
+      [
+        {
+          title: 'Result 9',
+          snippet: 'Snippet 9',
+          url: 'https://example.com/9',
+        },
+        {
+          title: 'Result 19',
+          snippet: 'Snippet 19',
+          url: 'https://example.com/19',
+        },
+        {
+          title: 'Result 41',
+          snippet: 'Snippet 41',
+          url: 'https://example.com/41',
+        },
+        {
+          title: 'Result 42',
+          snippet: 'Snippet 42',
+          url: 'https://example.com/42',
+        },
+        {
+          title: 'Result 43',
+          snippet: 'Snippet 43',
+          url: 'https://example.com/43',
+        },
+        {
+          title: 'Result 44',
+          snippet: 'Snippet 44',
+          url: 'https://example.com/44',
+        },
+        {
+          title: 'Result 45',
+          snippet: 'Snippet 45',
+          url: 'https://example.com/45',
+        },
+        {
+          title: 'Result 46',
+          snippet: 'Snippet 46',
+          url: 'https://example.com/46',
+        },
+        {
+          title: 'Result 47',
+          snippet: 'Snippet 47',
+          url: 'https://example.com/47',
+        },
+        {
+          title: 'Result 48',
+          snippet: 'Snippet 48',
+          url: 'https://example.com/48',
+        },
+      ],
+      [
+        {
+          title: 'Result 49',
+          snippet: 'Snippet 49',
+          url: 'https://example.com/49',
+        },
+        {
+          title: 'Result 50',
+          snippet: 'Snippet 50',
+          url: 'https://example.com/50',
+        },
+      ],
+    ];
+
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      wait: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi.fn()
+        .mockResolvedValueOnce({ results: pageResults[0], hasNext: true })
+        .mockResolvedValueOnce({ results: pageResults[1], hasNext: true })
+        .mockResolvedValueOnce({ results: pageResults[2], hasNext: true })
+        .mockResolvedValueOnce({ results: pageResults[3], hasNext: true })
+        .mockResolvedValueOnce({ results: pageResults[4], hasNext: true })
+        .mockResolvedValueOnce({ results: pageResults[5], hasNext: false }),
+    };
+
+    const result = await cmd!.func!(page as any, {
+      query: '2026 China GDP forecast',
+      limit: 50,
+      hl: 'en-US',
+    }) as Array<{ rank: number; title: string; snippet: string; url: string }>;
+
+    expect(page.goto).toHaveBeenNthCalledWith(
+      6,
+      'https://www.google.com/search?q=2026+China+GDP+forecast&hl=en-US&num=10&start=50',
+    );
+    expect(result).toHaveLength(50);
+    expect(result[49]).toEqual({
+      rank: 50,
+      title: 'Result 50',
+      snippet: 'Snippet 50',
+      url: 'https://example.com/50',
+    });
   });
 });

@@ -35,6 +35,12 @@ describe('buildGoogleSearchUrl', () => {
       'https://www.google.com/search?q=open+ai&hl=en-US&num=7',
     );
   });
+
+  it('includes a pagination offset when provided', () => {
+    expect(buildGoogleSearchUrl('open ai', { hl: 'en-US', count: 10, start: 20 })).toBe(
+      'https://www.google.com/search?q=open+ai&hl=en-US&num=10&start=20',
+    );
+  });
 });
 
 describe('parseGoogleNewsRss', () => {
