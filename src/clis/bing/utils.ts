@@ -17,6 +17,10 @@ export interface BingFetchOptions {
   count?: number;
 }
 
+export interface BingSearchOptions {
+  market?: string;
+}
+
 export async function bingFetch(path: string): Promise<string> {
   const resp = await fetch(`${BING_BASE}${path}`, {
     headers: {
@@ -50,6 +54,13 @@ export function buildBingSearchPath(query: string, options: BingFetchOptions = {
 
 export function buildBingNewsPath(query: string, options: BingFetchOptions = {}): string {
   return buildBingPath('/news/search', query, options);
+}
+
+export function buildBingSearchUrl(query: string, options: BingSearchOptions = {}): string {
+  const params = new URLSearchParams();
+  params.set('q', query);
+  if (options.market) params.set('mkt', String(options.market));
+  return `${BING_BASE}/search?${params.toString()}`;
 }
 
 export function parseBingRss(xml: string): BingRssItem[] {

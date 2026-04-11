@@ -1,6 +1,15 @@
 import { cli, Strategy } from '../../registry.js';
 import { CliError } from '../../errors.js';
 import { buildGoogleSearchUrl } from './utils.js';
+import {
+  SEARCH_PAGE_SIZE,
+  appendUniqueSearchResults,
+  emitPartialSearchWarning,
+  getAutoPaginationMaxPages,
+  getPaginationFooterExtra,
+  pauseBeforeSearchPageHop,
+  resolveAutoPaginatedLimit,
+} from '../search-pagination.js';
 
 type GoogleSearchResult = {
   title: string;
@@ -83,9 +92,10 @@ cli({
   description: 'Search Google web results via browser-rendered DOM',
   domain: 'www.google.com',
   strategy: Strategy.UI,
+  footerExtra: getPaginationFooterExtra,
   args: [
     { name: 'query', positional: true, required: true, help: 'Search query' },
-    { name: 'limit', type: 'int', default: 10, help: 'Max results (paged, max 100)' },
+    { name: 'limit', type: 'int', default: 10, help: 'Max results to collect across pages (max 100)' },
     { name: 'hl', default: 'en-US', help: 'Language/locale, e.g. en-US or zh-CN' },
   ],
   columns: ['rank', 'title', 'snippet', 'url'],
@@ -95,39 +105,46 @@ cli({
       throw new CliError('INVALID_ARG', 'Search query is required');
     }
 
-    const limit = Math.max(1, Math.min(Number(args.limit) || 10, 100));
-    const pageSize = 10;
-    const pageRequestCount = Math.min(pageSize, limit);
+    const limit = resolveAutoPaginatedLimit(args.limit);
     const seen = new Set<string>();
     const results: GoogleSearchResult[] = [];
-    const maxPages = Math.min(20, Math.ceil(limit / pageSize) + 5);
+    const maxPages = getAutoPaginationMaxPages(limit);
+    let stopReason = '';
 
     for (let pageIndex = 0; pageIndex < maxPages && results.length < limit; pageIndex++) {
-      const count = pageIndex === 0 ? pageRequestCount : pageSize;
+      if (pageIndex > 0) {
+        await pauseBeforeSearchPageHop(page);
+      }
+
       await page.goto(buildGoogleSearchUrl(query, {
         hl: args.hl,
-        count,
-        start: pageIndex * pageSize,
+        count: SEARCH_PAGE_SIZE,
+        start: pageIndex * SEARCH_PAGE_SIZE,
       }));
       await page.wait(2);
 
-      const data = await page.evaluate(buildGoogleSearchExtractScript(count)) as GoogleSearchPageData | { error?: string } | undefined;
-
+      const data = await page.evaluate(buildGoogleSearchExtractScript(SEARCH_PAGE_SIZE)) as GoogleSearchPageData | { error?: string } | undefined;
       if (!isGoogleSearchPageData(data)) {
+        if (results.length > 0) {
+          stopReason = data?.error || 'Google blocked pagination';
+          break;
+        }
         throw new CliError('FETCH_ERROR', data?.error || 'Google search page did not return parseable results');
       }
 
-      let newResults = 0;
-      for (const item of data.results) {
-        const key = `${item.title}|${item.url}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        results.push(item);
-        newResults++;
-        if (results.length >= limit) break;
+      if (!data.results.length) {
+        stopReason = 'Google returned a page with no parseable results';
+        break;
       }
 
-      if (!data.hasNext || newResults === 0) {
+      const added = appendUniqueSearchResults(results, data.results, seen, limit);
+      if (results.length >= limit) break;
+      if (added === 0) {
+        stopReason = 'Google returned only duplicate results on another page';
+        break;
+      }
+      if (!data.hasNext) {
+        stopReason = 'Google did not expose another results page';
         break;
       }
     }
@@ -135,6 +152,14 @@ cli({
     if (!results.length) {
       throw new CliError('NOT_FOUND', 'No Google search results found', 'Try another query, or open the query in Chrome once and retry.');
     }
+
+    emitPartialSearchWarning(
+      args,
+      'google',
+      limit,
+      results.length,
+      stopReason || 'Google stopped returning new results',
+    );
 
     return results.slice(0, limit).map((item, index) => ({
       rank: index + 1,

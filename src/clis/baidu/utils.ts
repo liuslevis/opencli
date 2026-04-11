@@ -8,6 +8,10 @@ export interface BaiduSuggestionItem {
   type: string;
 }
 
+export interface BaiduSearchOptions {
+  offset?: number;
+}
+
 export async function baiduFetchJson<T>(url: string): Promise<T> {
   const resp = await fetch(url, {
     headers: {
@@ -33,9 +37,13 @@ export function buildBaiduSuggestUrl(query: string): string {
   return `${BAIDU_BASE}/sugrec?${params.toString()}`;
 }
 
-export function buildBaiduSearchUrl(query: string): string {
+export function buildBaiduSearchUrl(query: string, options: BaiduSearchOptions = {}): string {
   const params = new URLSearchParams();
   params.set('wd', query);
+  const offset = Math.max(Number(options.offset) || 0, 0);
+  if (offset > 0) {
+    params.set('pn', String(offset));
+  }
   return `${BAIDU_BASE}/s?${params.toString()}`;
 }
 

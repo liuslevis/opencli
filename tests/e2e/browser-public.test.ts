@@ -95,6 +95,20 @@ describe('browser public-data commands E2E', () => {
     const data = await tryBrowserCommand(['bilibili', 'search', '--keyword', 'typescript', '--limit', '3', '-f', 'json']);
     expectDataOrSkip(data, 'bilibili search');
   }, 60_000);
+  it('google search auto-pages for larger limits', async () => {
+    const data = await tryBrowserCommand(['google', 'search', 'openai', '--limit', '20', '-f', 'json']);
+    expectDataOrSkip(data, 'google search');
+  }, 90_000);
+
+  it('bing search auto-pages for larger limits', async () => {
+    const data = await tryBrowserCommand(['bing', 'search', 'openai', '--limit', '20', '-f', 'json']);
+    expectDataOrSkip(data, 'bing search');
+  }, 90_000);
+
+  it('baidu search auto-pages for larger limits', async () => {
+    const data = await tryBrowserCommand(['baidu', 'search', 'OpenAI', '--limit', '20', '-f', 'json']);
+    expectDataOrSkip(data, 'baidu search');
+  }, 90_000);
 
   // ── weibo (browser: true, cookie strategy) ──
   it('weibo hot returns trending topics', async () => {

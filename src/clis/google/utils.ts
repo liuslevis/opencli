@@ -81,7 +81,7 @@ export function buildGoogleSearchUrl(query: string, options: GoogleSearchOptions
   const params = new URLSearchParams();
   params.set('q', query);
   params.set('hl', normalizeHl(options.hl));
-  params.set('num', String(Math.min(Math.max(Number(options.count) || 10, 1), 100)));
+  params.set('num', String(Math.min(Math.max(Number(options.count) || 10, 1), 10)));
   const start = Math.max(Number(options.start) || 0, 0);
   if (start > 0) {
     params.set('start', String(start));

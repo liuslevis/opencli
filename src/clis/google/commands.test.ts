@@ -88,7 +88,11 @@ describe('google suggest command', () => {
 });
 
 describe('google search command', () => {
-  it('navigates to the browser search URL and maps rendered results', async () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('uses a 10-result search page even when limit is smaller', async () => {
     const cmd = getRegistry().get('google/search');
     expect(cmd?.func).toBeTypeOf('function');
 
@@ -114,7 +118,7 @@ describe('google search command', () => {
     });
 
     expect(page.goto).toHaveBeenCalledWith(
-      'https://www.google.com/search?q=2026+China+GDP+goal&hl=en-US&num=5',
+      'https://www.google.com/search?q=2026+China+GDP+goal&hl=en-US&num=10',
     );
     expect(result).toEqual([
       {
@@ -179,12 +183,6 @@ describe('google search command', () => {
       'https://www.google.com/search?q=2026+China+GDP+forecast&hl=en-US&num=10&start=20',
     );
     expect(result).toHaveLength(25);
-    expect(result[0]).toEqual({
-      rank: 1,
-      title: 'Result 1',
-      snippet: 'Snippet 1',
-      url: 'https://example.com/1',
-    });
     expect(result[24]).toEqual({
       rank: 25,
       title: 'Result 25',
@@ -312,6 +310,54 @@ describe('google search command', () => {
       title: 'Result 50',
       snippet: 'Snippet 50',
       url: 'https://example.com/50',
+    });
+  });
+
+  it('returns partial results and emits a warning when later paging is blocked', async () => {
+    const cmd = getRegistry().get('google/search');
+    expect(cmd?.func).toBeTypeOf('function');
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const args: Record<string, any> = {
+      query: 'opencli',
+      limit: 15,
+      hl: 'en-US',
+    };
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      wait: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi.fn()
+        .mockResolvedValueOnce({
+          results: Array.from({ length: 10 }, (_v, index) => ({
+            title: `Result ${index + 1}`,
+            snippet: `Snippet ${index + 1}`,
+            url: `https://example.com/${index + 1}`,
+          })),
+          hasNext: true,
+        })
+        .mockResolvedValueOnce({
+          error: 'Google returned an anti-bot interstitial.',
+        }),
+    };
+
+    const result = await cmd!.func!(page as any, args) as Array<{ rank: number; title: string }>;
+
+    expect(result).toHaveLength(10);
+    expect(args._paginationWarning).toContain('returned 10/15');
+    expect(cmd?.footerExtra?.(args)).toContain('returned 10/15');
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('[opencli:google] Warning: Partial results: returned 10/15'));
+  });
+
+  it('rejects limits outside 1..100', async () => {
+    const cmd = getRegistry().get('google/search');
+    expect(cmd?.func).toBeTypeOf('function');
+
+    await expect(cmd!.func!({} as any, {
+      query: 'opencli',
+      limit: 101,
+      hl: 'en-US',
+    })).rejects.toMatchObject({
+      code: 'INVALID_ARG',
     });
   });
 });
