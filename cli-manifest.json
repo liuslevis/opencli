@@ -1856,6 +1856,40 @@
     "sourceFile": "arxiv/search.js"
   },
   {
+    "site": "baidu",
+    "name": "search",
+    "description": "Search Baidu",
+    "access": "read",
+    "domain": "baidu.com",
+    "strategy": "public",
+    "browser": true,
+    "args": [
+      {
+        "name": "keyword",
+        "type": "str",
+        "required": true,
+        "positional": true,
+        "help": "Search query"
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 10,
+        "required": false,
+        "help": "Number of results (1-50)"
+      }
+    ],
+    "columns": [
+      "type",
+      "title",
+      "url",
+      "snippet"
+    ],
+    "type": "js",
+    "modulePath": "baidu/search.js",
+    "sourceFile": "baidu/search.js"
+  },
+  {
     "site": "baidu-scholar",
     "name": "search",
     "description": "百度学术搜索",
@@ -3264,6 +3298,47 @@
     "type": "js",
     "modulePath": "binance/trades.js",
     "sourceFile": "binance/trades.js"
+  },
+  {
+    "site": "bing",
+    "name": "search",
+    "description": "Search Bing",
+    "access": "read",
+    "domain": "bing.com",
+    "strategy": "public",
+    "browser": true,
+    "args": [
+      {
+        "name": "keyword",
+        "type": "str",
+        "required": true,
+        "positional": true,
+        "help": "Search query"
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 10,
+        "required": false,
+        "help": "Number of results (1-50)"
+      },
+      {
+        "name": "lang",
+        "type": "str",
+        "default": "en-US",
+        "required": false,
+        "help": "Language code (e.g. en-US, zh-CN)"
+      }
+    ],
+    "columns": [
+      "type",
+      "title",
+      "url",
+      "snippet"
+    ],
+    "type": "js",
+    "modulePath": "bing/search.js",
+    "sourceFile": "bing/search.js"
   },
   {
     "site": "bloomberg",

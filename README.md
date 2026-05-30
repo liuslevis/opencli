@@ -25,7 +25,8 @@ OpenCLI requires **Node.js >= 20**.
 
 ```bash
 node --version
-npm install -g @jackwener/opencli
+git clone https://github.com/liuslevis/opencli && cd opencli && git checkout -b add-web-search
+npm install && npm run build && npm link
 ```
 
 ### 2. Install the Browser Bridge Extension
